@@ -137,7 +137,31 @@ def test_predict_reasonable_values(linear_data):
 
 
 
+@pytest.mark.parametrize("method", ["gd", "sgd", "normal_eq"])
+def test_l2_shrinks_coef(linear_data, method):
+    X, y = linear_data
 
+    model_plain = LinearRegression(method=method, lr=0.01, epochs=1000, regul="l2", lambda_=0.0)
+    model_plain.fit(X, y)
+
+    model_reg = LinearRegression(method=method, lr=0.01, epochs=1000, regul="l2", lambda_=10.0)
+    model_reg.fit(X, y)
+
+    assert not np.allclose(model_plain.coef_, model_reg.coef_)
+    assert abs(model_reg.coef_[0]) < abs(model_plain.coef_[0])
+
+
+@pytest.mark.parametrize("regul", ["l1", "elastic_net"])
+def test_l1_and_elastic_net_shrink_coef(linear_data, regul):
+    X, y = linear_data
+
+    model_plain = LinearRegression(method="gd", lr=0.01, epochs=1000, regul=regul, lambda_=0.0, alpha=0.5)
+    model_plain.fit(X, y)
+
+    model_reg = LinearRegression(method="gd", lr=0.01, epochs=1000, regul=regul, lambda_=10.0, alpha=0.5)
+    model_reg.fit(X, y)
+
+    assert not np.allclose(model_plain.coef_, model_reg.coef_)
 
 def test_score_perfect():
     

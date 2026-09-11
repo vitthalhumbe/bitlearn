@@ -36,7 +36,7 @@ public:
         weights = Eigen::VectorXd::Zero(n);
 
         if (method == "normal_eq")
-            fit_normal_eq(Xb, yv);
+            fit_normal_eq(Xb, yv, regul, lambda_);
         else if (method == "gd") 
             fit_gd(Xb, yv, method, regul, lr, epochs, lambda_, alpha);
         else if (method == "sgd")
@@ -93,7 +93,7 @@ private:
     std::vector<double> loss_history;
 
     // double dot();
-    void add_regularization(Eigen::VectorXd& grad) {
+    void add_regularization(Eigen::VectorXd& grad, const string& regul, double lambda_, double alpha) {
         for (int j = 1;j < grad.size(); ++j) {
             if (regul == "l2") {
                 grad(j) += 2 * lambda_ * weights(j);
@@ -112,7 +112,7 @@ private:
             Eigen::VectorXd error = X * weights -y;
             Eigen::VectorXd grad = (2.0 / m) * X.transpose() * error;
 
-            add_regularization(grad);
+            add_regularization(grad, regul, lambda_, alpha);
             weights -= lr * grad;
             double loss = compute_loss(X, y, method, regul, lr, epochs,  lambda_, alpha);
             loss_history.push_back(loss);
@@ -128,15 +128,21 @@ private:
                 double err = X.row(i).dot(weights) - y(i);
                 Eigen::VectorXd grad = 2 * err * X.row(i).transpose();
                 
-                add_regularization(grad);
+                add_regularization(grad, regul, lambda_, alpha);
                 weights -= lr * grad;
             }
             double loss = compute_loss(X, y, method, regul, lr, epochs,  lambda_, alpha);
         loss_history.push_back(loss);
         }
     };
-    void fit_normal_eq(const Eigen::MatrixXd& X, const Eigen::VectorXd& y){
-        weights = (X.transpose() * X).ldlt().solve(X.transpose() * y);
+    void fit_normal_eq(const Eigen::MatrixXd& X, const Eigen::VectorXd& y, string regul, double lambda_){
+        Eigen::MatrixXd XtX = X.transpose() * X;
+        if (regul == "l2") {
+            Eigen::MatrixXd I = Eigen::MatrixXd::Identity(XtX.rows(), XtX.cols());
+            I(0, 0) = 0.0;
+            XtX += lambda_ * I;
+        }
+        weights = XtX.ldlt().solve(X.transpose() * y);
     };
 
     double compute_loss(const Eigen::MatrixXd& X, const Eigen::VectorXd& y,string method,string regul,double lr,int epochs, double lambda_, double alpha) {
